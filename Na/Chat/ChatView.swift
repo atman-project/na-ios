@@ -1,5 +1,7 @@
+import PhotosUI
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 struct ChatView: View {
     @StateObject private var model = ChatViewModel()
@@ -9,6 +11,11 @@ struct ChatView: View {
     @State private var renameTarget: Chat?
     @State private var copiedID: UUID?
     @State private var isAtBottom = true
+    @State private var pendingAttachments: [Attachment] = []
+    @State private var showPhotoPicker = false
+    @State private var showFileImporter = false
+    @State private var showCamera = false
+    @State private var photoItem: PhotosPickerItem?
     @State private var renameText = ""
     @FocusState private var inputFocused: Bool
 
@@ -41,6 +48,24 @@ struct ChatView: View {
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()
+        }
+        .fullScreenCover(isPresented: $showCamera) {
+            CameraPicker { image in
+                if let attachment = Self.attachment(from: image, name: "camera.jpg") {
+                    pendingAttachments.append(attachment)
+                }
+            }
+            .ignoresSafeArea()
+        }
+        .photosPicker(isPresented: $showPhotoPicker, selection: $photoItem, matching: .images)
+        .onChange(of: photoItem) {
+            Task { await loadPhoto() }
+        }
+        .fileImporter(
+            isPresented: $showFileImporter,
+            allowedContentTypes: [.pdf, .image, .plainText, .json, .commaSeparatedText]
+        ) { result in
+            handleFile(result)
         }
         .alert("Rename Chat", isPresented: Binding(
             get: { renameTarget != nil },
@@ -212,6 +237,16 @@ struct ChatView: View {
             .font(.caption)
             .foregroundStyle(isError ? .red : .secondary)
             .padding(.leading, 4)
+        case .attachment(_, let label):
+            HStack {
+                Spacer(minLength: 40)
+                Label(label, systemImage: "paperclip")
+                    .font(.caption)
+                    .lineLimit(1)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.accentColor.opacity(0.15), in: Capsule())
+            }
         case .error(_, let text):
             Text(text)
                 .font(.footnote)
@@ -263,24 +298,31 @@ struct ChatView: View {
                 .padding(.horizontal)
                 .padding(.vertical, 8)
             } else {
-                HStack(alignment: .bottom, spacing: 8) {
-                    TextField("Tell Atman something…", text: $draft, axis: .vertical)
-                        .lineLimit(1...4)
-                        .focused($inputFocused)
-                        .onSubmit(submit)
-                        .padding(.vertical, 15)
-                    Button(action: submit) {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 32))
+                VStack(spacing: 0) {
+                    if !pendingAttachments.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(pendingAttachments) { attachment in
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "paperclip")
+                                        Text(attachment.filename).lineLimit(1)
+                                        Button {
+                                            pendingAttachments.removeAll { $0.id == attachment.id }
+                                        } label: {
+                                            Image(systemName: "xmark.circle.fill")
+                                        }
+                                    }
+                                    .font(.caption)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(Color(.tertiarySystemFill), in: Capsule())
+                                }
+                            }
+                        }
+                        .padding(.top, 12)
                     }
-                    .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
-                    // Matches the single-line row height (22pt line + 2×15pt
-                    // padding), so bottom alignment reads as centered at one
-                    // line and bottom-pinned when the field grows.
-                    .frame(height: 52)
+                    composerRow
                 }
-                .padding(.leading, 18)
-                .padding(.trailing, 8)
                 .modifier(ComposerBackground())
                 .padding(.horizontal)
                 .padding(.vertical, 8)
@@ -288,10 +330,88 @@ struct ChatView: View {
         }
     }
 
+    private var composerRow: some View {
+        HStack(alignment: .bottom, spacing: 8) {
+            Menu {
+                if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                    Button("Camera", systemImage: "camera") { showCamera = true }
+                }
+                Button("Photo Library", systemImage: "photo.on.rectangle") { showPhotoPicker = true }
+                Button("Choose File", systemImage: "folder") { showFileImporter = true }
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 30))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(height: 52)
+            TextField("Tell Atman something…", text: $draft, axis: .vertical)
+                .lineLimit(1...4)
+                .focused($inputFocused)
+                .onSubmit(submit)
+                .padding(.vertical, 15)
+            Button(action: submit) {
+                Image(systemName: "arrow.up.circle.fill")
+                    .font(.system(size: 32))
+            }
+            .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty && pendingAttachments.isEmpty)
+            // Matches the single-line row height (22pt line + 2×15pt padding),
+            // so bottom alignment reads as centered at one line and
+            // bottom-pinned when the field grows.
+            .frame(height: 52)
+        }
+        .padding(.leading, 10)
+        .padding(.trailing, 8)
+    }
+
     private func submit() {
         let text = draft
+        let attachments = pendingAttachments
         draft = ""
-        model.send(text)
+        pendingAttachments = []
+        model.send(text, attachments: attachments)
+    }
+
+    private func loadPhoto() async {
+        guard let item = photoItem else { return }
+        photoItem = nil
+        guard let data = try? await item.loadTransferable(type: Data.self),
+              let attachment = Self.imageAttachment(from: data, name: "photo.jpg") else { return }
+        pendingAttachments.append(attachment)
+    }
+
+    private func handleFile(_ result: Result<URL, Error>) {
+        guard case .success(let url) = result else { return }
+        let secured = url.startAccessingSecurityScopedResource()
+        defer { if secured { url.stopAccessingSecurityScopedResource() } }
+        guard let data = try? Data(contentsOf: url) else { return }
+        let name = url.lastPathComponent
+        let type = UTType(filenameExtension: url.pathExtension)
+        if type?.conforms(to: .pdf) == true {
+            pendingAttachments.append(Attachment(filename: name, kind: .pdf, data: data))
+        } else if type?.conforms(to: .image) == true {
+            if let attachment = Self.imageAttachment(from: data, name: name) {
+                pendingAttachments.append(attachment)
+            }
+        } else if let text = String(data: data, encoding: .utf8) {
+            pendingAttachments.append(
+                Attachment(filename: name, kind: .text(String(text.prefix(100_000))), data: Data()))
+        }
+    }
+
+    /// Downscale to Claude's preferred max edge and re-encode as JPEG.
+    private static func imageAttachment(from data: Data, name: String) -> Attachment? {
+        guard let image = UIImage(data: data) else { return nil }
+        return attachment(from: image, name: name)
+    }
+
+    private static func attachment(from image: UIImage, name: String) -> Attachment? {
+        let maxEdge: CGFloat = 1568
+        let scale = min(1, maxEdge / max(image.size.width, image.size.height))
+        let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let resized = renderer.image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
+        guard let jpeg = resized.jpegData(compressionQuality: 0.8) else { return nil }
+        return Attachment(filename: name, kind: .image, data: jpeg)
     }
 }
 
@@ -317,5 +437,46 @@ private struct ComposerBackground: ViewModifier {
         content.background(
             Color(.secondarySystemBackground),
             in: RoundedRectangle(cornerRadius: 26))
+    }
+}
+
+/// Minimal camera capture (SwiftUI has no native camera view).
+private struct CameraPicker: UIViewControllerRepresentable {
+    let onCapture: (UIImage) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ picker: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: CameraPicker
+
+        init(_ parent: CameraPicker) {
+            self.parent = parent
+        }
+
+        func imagePickerController(
+            _ picker: UIImagePickerController,
+            didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
+        ) {
+            if let image = info[.originalImage] as? UIImage {
+                parent.onCapture(image)
+            }
+            parent.dismiss()
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.dismiss()
+        }
     }
 }
