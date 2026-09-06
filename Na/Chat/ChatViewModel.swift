@@ -55,8 +55,7 @@ final class ChatViewModel: ObservableObject {
     enum Item: Identifiable, Codable {
         case user(id: UUID, text: String)
         case assistant(id: UUID, text: String)
-        // `detail` is optional so chats persisted before it existed still decode.
-        case tool(id: UUID, name: String, summary: String, detail: String?, isError: Bool)
+        case tool(id: UUID, name: String, summary: String, detail: String, isError: Bool)
         case attachment(id: UUID, label: String)
         case error(id: UUID, text: String)
 

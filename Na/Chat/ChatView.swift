@@ -251,7 +251,7 @@ struct ChatView: View {
             .padding(.vertical, 2)
         case .tool(_, let name, let summary, let detail, let isError):
             Button {
-                toolDetail = ToolDetail(name: name, text: detail ?? summary)
+                toolDetail = ToolDetail(name: name, text: detail)
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: isError ? "exclamationmark.triangle" : "wrench.and.screwdriver")
