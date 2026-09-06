@@ -16,6 +16,17 @@ packages:
     url: https://github.com/gonzalezreal/swift-markdown-ui
     branch: main
 
+packages:
+  MLXLM:
+    url: https://github.com/ml-explore/mlx-swift-lm
+    from: 3.31.4
+  SwiftHuggingFace:
+    url: https://github.com/huggingface/swift-huggingface
+    from: 0.9.0
+  SwiftTransformers:
+    url: https://github.com/huggingface/swift-transformers
+    from: 1.3.0
+
 targets:
   Na:
     type: application
@@ -48,6 +59,23 @@ targets:
         # Only standard TLS to api.anthropic.com — exempt under the default
         # U.S. mass-market crypto exemption.
         ITSAppUsesNonExemptEncryption: false
+    dependencies:
+      - package: MLXLM
+        product: MLXLLM
+      - package: MLXLM
+        product: MLXLMCommon
+      - package: MLXLM
+        product: MLXHuggingFace
+      - package: SwiftHuggingFace
+        product: HuggingFace
+      - package: SwiftTransformers
+        product: Tokenizers
+    entitlements:
+      path: Na/Na.entitlements
+      properties:
+        # A 4-bit 4B model (~2.3 GB weights + KV cache) exceeds the default
+        # per-app memory ceiling on iPhone.
+        com.apple.developer.kernel.increased-memory-limit: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: sh.atman.na
