@@ -1,13 +1,12 @@
 # Atman Agent
 
-The core [Atman Project](https://github.com/atman-project) application: a SQLite
-database that lives on your phone, mutated and queried by chatting.
+The core [Atman Project](https://github.com/atman-project) application.
 
-Every table you create is a **sub-app** — a small schema (car fuel history,
-workouts, expenses, …) that you define and fill by talking to the assistant.
-The current scope is deliberately minimal: a chat interface over the local
-database. Sharing/joining sub-apps and live replication arrive when
-[crrdb](https://github.com/atman-project/crrdb) is integrated.
+Current status: a SQLite database that lives on your phone, mutated and queried by chatting.
+
+Every table you create is a **sub-app** — a small schema (car fuel history, workouts, expenses, …) that you define and fill by talking to the assistant.
+The current scope is deliberately minimal: a chat interface over the local database, which does not support syncing yet.
+Sharing/joining sub-apps and live replication arrive when [crrdb](https://github.com/atman-project/crrdb) is integrated.
 
 ## Architecture
 

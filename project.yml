@@ -8,7 +8,7 @@ settings:
   base:
     SWIFT_VERSION: "5.10"
     DEVELOPMENT_TEAM: "${DEVELOPMENT_TEAM}"  # set via env or override locally
-    MARKETING_VERSION: "0.1.0"
+    MARKETING_VERSION: "0.0.1"
     CURRENT_PROJECT_VERSION: "1"
 
 packages:
@@ -28,6 +28,10 @@ targets:
       path: AtmanAgent/Info.plist
       properties:
         UILaunchScreen: {}
+        # Without these, xcodegen writes literal 1.0/1 instead of using
+        # MARKETING_VERSION / CURRENT_PROJECT_VERSION from settings above.
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         # Home-screen label; the product/module name stays AtmanAgent.
         CFBundleDisplayName: Atman
         UISupportedInterfaceOrientations:

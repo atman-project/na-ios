@@ -1,6 +1,7 @@
 # Atman Agent
 
-A chat interface over a user-owned local SQLite database: the user talks
+An app that integrates all the components in the Atman tech stack.
+For now, the app is over a user-owned local SQLite database: the user talks
 ("I filled up 43L for 68,000 won"), Claude extracts structured records via
 tool calls, and the embedded crrdb-mcp library executes them on-device.
 This is the realization of the **Teller** concept (`~/repos/teller/concept.md`,

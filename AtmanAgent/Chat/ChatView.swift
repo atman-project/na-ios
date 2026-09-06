@@ -4,43 +4,122 @@ struct ChatView: View {
     @StateObject private var model = ChatViewModel()
     @State private var draft = ""
     @State private var showSettings = false
+    @State private var showSidebar = false
+    @State private var renameTarget: Chat?
+    @State private var renameText = ""
     @FocusState private var inputFocused: Bool
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 10) {
-                            if model.items.isEmpty {
-                                emptyState
-                            }
-                            ForEach(model.items) { item in
-                                row(for: item)
-                            }
-                        }
-                        .padding()
-                    }
-                    .onChange(of: model.items.count) {
-                        if let last = model.items.last?.id {
-                            withAnimation { proxy.scrollTo(last, anchor: .bottom) }
+        ZStack(alignment: .leading) {
+            NavigationStack {
+                VStack(spacing: 0) {
+                    transcript
+                    inputBar
+                }
+                .navigationTitle("Atman")
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Chats", systemImage: "line.3.horizontal") {
+                            inputFocused = false
+                            withAnimation { showSidebar = true }
                         }
                     }
-                }
-                inputBar
-            }
-            .navigationTitle("Atman")
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Settings", systemImage: "gearshape") { showSettings = true }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Clear", systemImage: "trash") { model.clearConversation() }
-                        .disabled(model.items.isEmpty || model.isBusy)
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Settings", systemImage: "gearshape") { showSettings = true }
+                    }
                 }
             }
-            .sheet(isPresented: $showSettings) {
-                SettingsView()
+
+            if showSidebar {
+                Color.black.opacity(0.35)
+                    .ignoresSafeArea()
+                    .onTapGesture { withAnimation { showSidebar = false } }
+                sidebar
+                    .transition(.move(edge: .leading))
+            }
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+        }
+        .alert("Rename Chat", isPresented: Binding(
+            get: { renameTarget != nil },
+            set: { if !$0 { renameTarget = nil } }
+        )) {
+            TextField("Title", text: $renameText)
+            Button("Save") {
+                if let target = renameTarget {
+                    model.renameChat(target.id, to: renameText)
+                }
+                renameTarget = nil
+            }
+            Button("Cancel", role: .cancel) { renameTarget = nil }
+        }
+    }
+
+    // MARK: - Sidebar
+
+    private var sidebar: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                model.newChat()
+                withAnimation { showSidebar = false }
+            } label: {
+                Label("New Chat", systemImage: "square.and.pencil")
+                    .font(.headline)
+            }
+            .padding()
+
+            Divider()
+
+            List {
+                ForEach(model.chats) { chat in
+                    Button {
+                        if chat.id != model.currentChatID {
+                            model.openChat(chat.id)
+                        }
+                        withAnimation { showSidebar = false }
+                    } label: {
+                        Text(chat.title)
+                            .lineLimit(1)
+                            .fontWeight(chat.id == model.currentChatID ? .semibold : .regular)
+                    }
+                    .contextMenu {
+                        Button("Rename", systemImage: "pencil") {
+                            renameText = chat.title
+                            renameTarget = chat
+                        }
+                        Button("Delete", systemImage: "trash", role: .destructive) {
+                            model.deleteChat(chat.id)
+                        }
+                    }
+                }
+            }
+            .listStyle(.plain)
+        }
+        .frame(width: 290)
+        .frame(maxHeight: .infinity)
+        .background(Color(.systemBackground).ignoresSafeArea())
+    }
+
+    // MARK: - Transcript
+
+    private var transcript: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 10) {
+                    if model.items.isEmpty {
+                        emptyState
+                    }
+                    ForEach(model.items) { item in
+                        row(for: item)
+                    }
+                }
+                .padding()
+            }
+            .onChange(of: model.items.count) {
+                if let last = model.items.last?.id {
+                    withAnimation { proxy.scrollTo(last, anchor: .bottom) }
+                }
             }
         }
     }
@@ -89,6 +168,28 @@ struct ChatView: View {
         }
     }
 
+    /// Native Text renders inline markdown only (bold, italic, links) — no
+    /// tables or lists. The system prompt steers away from wide tables; here
+    /// we just tidy the block-level leftovers so lines read cleanly.
+    private static func inlineMarkdown(_ text: String) -> AttributedString {
+        let tidied = text
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map { line -> String in
+                let l = String(line)
+                if l.hasPrefix("- ") || l.hasPrefix("* ") {
+                    return "•" + l.dropFirst(1)
+                }
+                return l
+            }
+            .joined(separator: "\n")
+        return (try? AttributedString(
+            markdown: tidied,
+            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
+            ?? AttributedString(text)
+    }
+
+    // MARK: - Input
+
     private var inputBar: some View {
         VStack(spacing: 0) {
             if model.isBusy {
@@ -123,26 +224,6 @@ struct ChatView: View {
             .padding(.vertical, 8)
         }
         .background(.bar)
-    }
-
-    /// Native Text renders inline markdown only (bold, italic, links) — no
-    /// tables or lists. The system prompt bans tables; here we just tidy the
-    /// block-level leftovers so lines read cleanly.
-    private static func inlineMarkdown(_ text: String) -> AttributedString {
-        let tidied = text
-            .split(separator: "\n", omittingEmptySubsequences: false)
-            .map { line -> String in
-                let l = String(line)
-                if l.hasPrefix("- ") || l.hasPrefix("* ") {
-                    return "•" + l.dropFirst(1)
-                }
-                return l
-            }
-            .joined(separator: "\n")
-        return (try? AttributedString(
-            markdown: tidied,
-            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
-            ?? AttributedString(text)
     }
 
     private func submit() {
