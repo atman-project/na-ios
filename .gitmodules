@@ -1,0 +1,3 @@
+[submodule "submodules/crrdb-mcp"]
+	path = submodules/crrdb-mcp
+	url = git@github.com:atman-project/crrdb-mcp.git
