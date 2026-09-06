@@ -1,0 +1,45 @@
+name: iOS
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build AtmanAgent for simulator
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Add iOS targets
+        run: rustup target add aarch64-apple-ios-sim
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      # Must run before `xcodegen` because the generated `crrdb_mcp.swift`
+      # is listed as a project source and xcodegen validates that path.
+      - name: Build crrdb-mcp static library (simulator arm64)
+        run: ./build_crrdb_mcp.sh --sim-arm64
+
+      - name: Generate Xcode project
+        env:
+          DEVELOPMENT_TEAM: ${{ secrets.APPLE_DEVELOPMENT_TEAM }}
+        run: xcodegen
+
+      - name: Build the app for the iOS simulator
+        run: |
+          xcodebuild build \
+            -scheme AtmanAgent \
+            -project AtmanAgent.xcodeproj \
+            -destination 'generic/platform=iOS Simulator' \
+            ARCHS=arm64 \
+            CODE_SIGNING_ALLOWED=NO
