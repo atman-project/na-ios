@@ -31,11 +31,12 @@ targets:
         # Without these, xcodegen writes literal 1.0/1 instead of using
         # MARKETING_VERSION / CURRENT_PROJECT_VERSION from settings above.
         CFBundleShortVersionString: $(MARKETING_VERSION)
+        # Home-screen label.
+        CFBundleDisplayName: Na
+        LSApplicationCategoryType: public.app-category.productivity
         # Attach-from-camera in chat.
         NSCameraUsageDescription: "Na uses the camera to capture documents and receipts to attach to your chat."
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-        # Home-screen label; the product/module name stays AtmanAgent.
-        CFBundleDisplayName: Na
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UIRequiredDeviceCapabilities:
@@ -51,6 +52,11 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: sh.atman.na
         PRODUCT_NAME: Na
+        # Display-only for Xcode's Identity pane. With an explicit Info.plist
+        # these settings are NOT merged into the build (verified) — the real
+        # values live in the info.properties block above.
+        INFOPLIST_KEY_CFBundleDisplayName: Na
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
         HEADER_SEARCH_PATHS: "$(SRCROOT)/crrdb-mcp"
         LIBRARY_SEARCH_PATHS: "$(SRCROOT)/crrdb-mcp"
         # Lets `crrdb_mcp.swift` resolve `import crrdb_mcpFFI`.
