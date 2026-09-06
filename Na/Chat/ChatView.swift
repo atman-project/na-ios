@@ -123,6 +123,8 @@ struct ChatView: View {
                 }
                 .padding()
             }
+            .scrollDismissesKeyboard(.immediately)
+            .onTapGesture { inputFocused = false }
             .onChange(of: model.items.count) {
                 if let last = model.items.last?.id {
                     withAnimation { proxy.scrollTo(last, anchor: .bottom) }
@@ -219,8 +221,9 @@ struct ChatView: View {
     // MARK: - Input
 
     private var inputBar: some View {
-        VStack(spacing: 0) {
+        Group {
             if model.isBusy {
+                // While processing, the composer is replaced entirely.
                 HStack(spacing: 8) {
                     ProgressView()
                     Text("Working…")
@@ -228,34 +231,36 @@ struct ChatView: View {
                         Text(since, style: .timer).monospacedDigit()
                     }
                     Spacer()
-                    Button("Stop", systemImage: "stop.circle.fill") { model.stop() }
+                    Button("Cancel", systemImage: "stop.circle.fill") { model.stop() }
                         .labelStyle(.titleAndIcon)
                 }
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
-                .padding(.top, 8)
-            }
-            HStack(spacing: 8) {
-                TextField("Tell Atman something…", text: $draft, axis: .vertical)
-                    .lineLimit(1...4)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($inputFocused)
-                    .onSubmit(submit)
-                Button(action: submit) {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.title2)
+                .padding(.vertical, 14)
+            } else {
+                HStack(spacing: 8) {
+                    TextField("Tell Atman something…", text: $draft, axis: .vertical)
+                        .lineLimit(1...4)
+                        .textFieldStyle(.roundedBorder)
+                        .focused($inputFocused)
+                        .onSubmit(submit)
+                    Button(action: submit) {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.title2)
+                    }
+                    .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
-                .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty || model.isBusy)
+                .padding(.horizontal)
+                .padding(.vertical, 8)
             }
-            .padding(.horizontal)
-            .padding(.vertical, 8)
         }
         .background(.bar)
     }
 
     private func submit() {
-        model.send(draft)
+        let text = draft
         draft = ""
+        model.send(text)
     }
 }
