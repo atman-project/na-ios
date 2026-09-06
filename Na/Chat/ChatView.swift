@@ -296,14 +296,26 @@ struct ChatView: View {
 }
 
 /// Liquid Glass on iOS 26+, plain fill on earlier systems.
+///
+/// The `#if compiler` guard keeps the file compilable on pre-Xcode-26
+/// toolchains (e.g. CI runners), where the `glassEffect` symbol does not
+/// exist in the SDK; `#available` alone only guards at runtime.
 private struct ComposerBackground: ViewModifier {
     func body(content: Content) -> some View {
+        #if compiler(>=6.2)
         if #available(iOS 26.0, *) {
             content.glassEffect(.regular, in: RoundedRectangle(cornerRadius: 26))
         } else {
-            content.background(
-                Color(.secondarySystemBackground),
-                in: RoundedRectangle(cornerRadius: 26))
+            fallback(content: content)
         }
+        #else
+        fallback(content)
+        #endif
+    }
+
+    private func fallback(content: Content) -> some View {
+        content.background(
+            Color(.secondarySystemBackground),
+            in: RoundedRectangle(cornerRadius: 26))
     }
 }
