@@ -154,7 +154,13 @@ struct ChatView: View {
                 .padding()
             }
             .scrollDismissesKeyboard(.immediately)
-            .onTapGesture { inputFocused = false }
+            .onTapGesture {
+                inputFocused = false
+                // End any active text selection (and its edit menu) right away;
+                // otherwise the menu lingers until the system gets around to it.
+                UIApplication.shared.sendAction(
+                    #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
             .onChange(of: model.items.count) {
                 // Follow new messages only when already at the bottom.
                 if isAtBottom {
@@ -199,12 +205,18 @@ struct ChatView: View {
                 Text(text)
                     .padding(10)
                     .background(Color.accentColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 14))
+                    .contextMenu {
+                        Button("Copy", systemImage: "doc.on.doc") {
+                            UIPasteboard.general.string = text
+                        }
+                        ShareLink(item: text) {
+                            Label("Share", systemImage: "square.and.arrow.up")
+                        }
+                    }
             }
         case .assistant(let id, let text):
             VStack(alignment: .leading, spacing: 14) {
-                Text(Self.inlineMarkdown(text))
-                    .lineSpacing(6)
-                    .textSelection(.enabled)
+                SelectableMessageText(text: text)
                 HStack(spacing: 14) {
                     Button {
                         UIPasteboard.general.string = text
@@ -254,25 +266,6 @@ struct ChatView: View {
         }
     }
 
-    /// Native Text renders inline markdown only (bold, italic, links) — no
-    /// tables or lists. The system prompt steers away from wide tables; here
-    /// we just tidy the block-level leftovers so lines read cleanly.
-    private static func inlineMarkdown(_ text: String) -> AttributedString {
-        let tidied = text
-            .split(separator: "\n", omittingEmptySubsequences: false)
-            .map { line -> String in
-                let l = String(line)
-                if l.hasPrefix("- ") || l.hasPrefix("* ") {
-                    return "•" + l.dropFirst(1)
-                }
-                return l
-            }
-            .joined(separator: "\n")
-        return (try? AttributedString(
-            markdown: tidied,
-            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
-            ?? AttributedString(text)
-    }
 
     // MARK: - Input
 
@@ -478,5 +471,91 @@ private struct CameraPicker: UIViewControllerRepresentable {
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
             parent.dismiss()
         }
+    }
+}
+
+
+
+
+/// Assistant message body rendered with UITextView so long-press starts
+/// in-place text selection (handles + system edit bar), like ChatGPT.
+/// SwiftUI's Text cannot offer partial in-place selection.
+private struct SelectableMessageText: UIViewRepresentable {
+    let text: String
+
+    func makeUIView(context: Context) -> UITextView {
+        let view = UITextView()
+        view.isEditable = false
+        view.isScrollEnabled = false
+        view.backgroundColor = .clear
+        view.textContainerInset = .zero
+        view.textContainer.lineFragmentPadding = 0
+        view.adjustsFontForContentSizeCategory = true
+        view.attributedText = MessageMarkdown.render(text)
+        return view
+    }
+
+    func updateUIView(_ view: UITextView, context: Context) {
+        view.attributedText = MessageMarkdown.render(text)
+    }
+
+    func sizeThatFits(
+        _ proposal: ProposedViewSize, uiView: UITextView, context: Context
+    ) -> CGSize? {
+        guard let width = proposal.width, width > 0, width.isFinite else { return nil }
+        let size = uiView.sizeThatFits(
+            CGSize(width: width, height: .greatestFiniteMagnitude))
+        return CGSize(width: width, height: size.height)
+    }
+}
+
+/// Inline markdown (bold, italic, code, links) → NSAttributedString for
+/// UITextView. Tidies "- " bullets to "•" like the old SwiftUI renderer.
+private enum MessageMarkdown {
+    static func render(_ text: String) -> NSAttributedString {
+        let tidied = text
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map { line -> String in
+                let l = String(line)
+                if l.hasPrefix("- ") || l.hasPrefix("* ") {
+                    return "•" + l.dropFirst(1)
+                }
+                return l
+            }
+            .joined(separator: "\n")
+
+        let parsed = (try? AttributedString(
+            markdown: tidied,
+            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
+            ?? AttributedString(text)
+
+        let body = UIFont.preferredFont(forTextStyle: .body)
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.lineSpacing = 6
+
+        let result = NSMutableAttributedString()
+        for run in parsed.runs {
+            let piece = String(parsed.characters[run.range])
+            var font = body
+            if let intent = run.inlinePresentationIntent {
+                if intent.contains(.stronglyEmphasized) {
+                    font = .systemFont(ofSize: body.pointSize, weight: .semibold)
+                } else if intent.contains(.emphasized) {
+                    font = .italicSystemFont(ofSize: body.pointSize)
+                } else if intent.contains(.code) {
+                    font = .monospacedSystemFont(ofSize: body.pointSize * 0.9, weight: .regular)
+                }
+            }
+            var attributes: [NSAttributedString.Key: Any] = [
+                .font: font,
+                .foregroundColor: UIColor.label,
+                .paragraphStyle: paragraph,
+            ]
+            if let link = run.link {
+                attributes[.link] = link
+            }
+            result.append(NSAttributedString(string: piece, attributes: attributes))
+        }
+        return result
     }
 }
