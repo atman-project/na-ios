@@ -1,4 +1,5 @@
 import Foundation
+import MLXLMCommon
 
 /// A conversation. Chats are independent of sub-apps — one chat can touch any
 /// number of sub-apps; the sidebar exists purely for conversation hygiene.
@@ -90,6 +91,7 @@ final class ChatViewModel: ObservableObject {
 
     func deleteChat(_ id: UUID) {
         if id == currentChatID { stop() }
+        LocalLLM.shared.dropSession(for: id)
         try? FileManager.default.removeItem(at: Self.fileURL(id))
         chats.removeAll { $0.id == id }
         if currentChatID == id {
@@ -103,10 +105,70 @@ final class ChatViewModel: ObservableObject {
 
     // MARK: - Sending
 
+    static var useLocalBackend: Bool {
+        UserDefaults.standard.string(forKey: "llm.backend") == "local"
+    }
+
     func send(_ text: String) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isBusy else { return }
-        currentTask = Task { await run(trimmed) }
+        currentTask = Task {
+            if Self.useLocalBackend {
+                await runLocal(trimmed)
+            } else {
+                await run(trimmed)
+            }
+        }
+    }
+
+    /// One turn against the on-device model. The MLX ChatSession owns the
+    /// conversation state and runs the tool loop internally; our dispatch
+    /// closure executes each call against crrdb-mcp and surfaces a chip.
+    private func runLocal(_ text: String) async {
+        items.append(.user(id: UUID(), text: text))
+        #if targetEnvironment(simulator)
+        items.append(.error(id: UUID(), text: "The on-device model needs a real device — the simulator can't run MLX. Switch back to Claude in Settings."))
+        persistCurrent()
+        #else
+        guard let chatID = currentChatID else { return }
+        guard LocalLLM.shared.state == .ready,
+              let session = LocalLLM.shared.session(for: chatID, toolDispatch: { [weak self] call in
+                  let inputJSON = (try? JSONEncoder().encode(call.function.arguments))
+                      .flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+                  let output = try Crrdb.shared.executeTool(
+                      name: call.function.name, inputJson: inputJSON)
+                  await MainActor.run {
+                      self?.items.append(.tool(
+                          id: UUID(), name: call.function.name,
+                          summary: String(inputJSON.prefix(120)),
+                          isError: output.isError))
+                  }
+                  return output.json
+              }) else {
+            items.append(.error(id: UUID(), text: "Load the on-device model in Settings first."))
+            persistCurrent()
+            return
+        }
+
+        isBusy = true
+        busySince = Date()
+        defer {
+            isBusy = false
+            busySince = nil
+            currentTask = nil
+        }
+        do {
+            let reply = try await session.respond(to: text)
+            guard currentChatID == chatID else { return }
+            let trimmedReply = reply.trimmingCharacters(in: .whitespacesAndNewlines)
+            items.append(.assistant(id: UUID(), text: trimmedReply.isEmpty ? "(no response)" : trimmedReply))
+        } catch is CancellationError {
+            if currentChatID == chatID { items.append(.error(id: UUID(), text: "Stopped.")) }
+        } catch {
+            if currentChatID == chatID { items.append(.error(id: UUID(), text: "\(error)")) }
+        }
+        persistCurrent()
+        #endif
     }
 
     func stop() {
