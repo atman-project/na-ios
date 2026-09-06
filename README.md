@@ -37,6 +37,11 @@ open AtmanAgent.xcodeproj
 
 Set your Anthropic API key in the app's Settings (stored in the Keychain).
 
+## App icon
+
+The icon glyph — "나" — is set in [Pretendard](https://github.com/orioncactus/pretendard) Black v1.3.9 (SIL Open Font License, © Kil Hyung-jin), rendered once into `AtmanAgent/Assets.xcassets/AppIcon.appiconset/app_icon.png`.
+No font files ship in the app, and the OFL makes the artwork reusable anywhere.
+
 ## Not yet
 
 - crrdb integration (conflict-free replication across devices/friends)
