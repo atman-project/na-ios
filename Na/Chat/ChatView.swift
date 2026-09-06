@@ -62,7 +62,7 @@ struct ChatView: View {
 
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Atman")
+            Text("Na 나")
                 .font(.largeTitle.bold())
                 .padding(.horizontal)
                 .padding(.top, 12)

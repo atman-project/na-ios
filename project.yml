@@ -1,4 +1,4 @@
-name: AtmanAgent
+name: Na
 options:
   bundleIdPrefix: sh.atman
   deploymentTarget:
@@ -17,15 +17,15 @@ packages:
     branch: main
 
 targets:
-  AtmanAgent:
+  Na:
     type: application
     platform: iOS
     sources:
-      - AtmanAgent
+      - Na
       # UniFFI-generated, gitignored, produced by build_crrdb_mcp.sh.
       - crrdb-mcp/crrdb_mcp.swift
     info:
-      path: AtmanAgent/Info.plist
+      path: Na/Info.plist
       properties:
         UILaunchScreen: {}
         # Without these, xcodegen writes literal 1.0/1 instead of using
@@ -33,7 +33,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         # Home-screen label; the product/module name stays AtmanAgent.
-        CFBundleDisplayName: Atman
+        CFBundleDisplayName: Na
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UIRequiredDeviceCapabilities:
@@ -47,8 +47,8 @@ targets:
         ITSAppUsesNonExemptEncryption: false
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: sh.atman.agent
-        PRODUCT_NAME: AtmanAgent
+        PRODUCT_BUNDLE_IDENTIFIER: sh.atman.na
+        PRODUCT_NAME: Na
         HEADER_SEARCH_PATHS: "$(SRCROOT)/crrdb-mcp"
         LIBRARY_SEARCH_PATHS: "$(SRCROOT)/crrdb-mcp"
         # Lets `crrdb_mcp.swift` resolve `import crrdb_mcpFFI`.

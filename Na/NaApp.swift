@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct AtmanAgentApp: App {
+struct NaApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()

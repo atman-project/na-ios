@@ -3,7 +3,7 @@ import Security
 
 /// Minimal Keychain wrapper for the Anthropic API key.
 enum Keychain {
-    private static let service = "sh.atman.agent"
+    private static let service = "sh.atman.na"
     private static let account = "anthropic-api-key"
 
     static func saveAPIKey(_ key: String) {
