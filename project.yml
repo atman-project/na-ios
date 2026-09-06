@@ -31,6 +31,8 @@ targets:
         # Without these, xcodegen writes literal 1.0/1 instead of using
         # MARKETING_VERSION / CURRENT_PROJECT_VERSION from settings above.
         CFBundleShortVersionString: $(MARKETING_VERSION)
+        # Attach-from-camera in chat.
+        NSCameraUsageDescription: "Na uses the camera to capture documents and receipts to attach to your chat."
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         # Home-screen label; the product/module name stays AtmanAgent.
         CFBundleDisplayName: Na

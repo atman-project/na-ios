@@ -9,6 +9,46 @@ struct Chat: Identifiable {
     var updatedAt: Date
 }
 
+/// A pending file/photo attachment, converted to Anthropic content blocks
+/// on send. Images are pre-downscaled JPEG; text files carry their contents.
+struct Attachment: Identifiable {
+    enum Kind {
+        case image
+        case pdf
+        case text(String)
+    }
+
+    let id = UUID()
+    let filename: String
+    let kind: Kind
+    let data: Data
+
+    func contentBlock() -> [String: Any] {
+        switch kind {
+        case .image:
+            return [
+                "type": "image",
+                "source": [
+                    "type": "base64",
+                    "media_type": "image/jpeg",
+                    "data": data.base64EncodedString(),
+                ],
+            ]
+        case .pdf:
+            return [
+                "type": "document",
+                "source": [
+                    "type": "base64",
+                    "media_type": "application/pdf",
+                    "data": data.base64EncodedString(),
+                ],
+            ]
+        case .text(let content):
+            return ["type": "text", "text": "Attached file \(filename):\n\n\(content)"]
+        }
+    }
+}
+
 @MainActor
 final class ChatViewModel: ObservableObject {
 
@@ -16,12 +56,14 @@ final class ChatViewModel: ObservableObject {
         case user(id: UUID, text: String)
         case assistant(id: UUID, text: String)
         case tool(id: UUID, name: String, summary: String, isError: Bool)
+        case attachment(id: UUID, label: String)
         case error(id: UUID, text: String)
 
         var id: UUID {
             switch self {
             case .user(let id, _), .assistant(let id, _),
-                 .tool(let id, _, _, _), .error(let id, _):
+                 .tool(let id, _, _, _), .attachment(let id, _),
+                 .error(let id, _):
                 return id
             }
         }
@@ -103,17 +145,17 @@ final class ChatViewModel: ObservableObject {
 
     // MARK: - Sending
 
-    func send(_ text: String) {
+    func send(_ text: String, attachments: [Attachment] = []) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, !isBusy else { return }
-        currentTask = Task { await run(trimmed) }
+        guard !trimmed.isEmpty || !attachments.isEmpty, !isBusy else { return }
+        currentTask = Task { await run(trimmed, attachments: attachments) }
     }
 
     func stop() {
         currentTask?.cancel()
     }
 
-    private func run(_ text: String) async {
+    private func run(_ text: String, attachments: [Attachment] = []) async {
         guard let apiKey = Keychain.loadAPIKey(), !apiKey.isEmpty else {
             items.append(.error(id: UUID(), text: "Set your Anthropic API key in Settings first."))
             return
@@ -130,8 +172,17 @@ final class ChatViewModel: ObservableObject {
         // must not write into the newly opened chat.
         let chatID = currentChatID
 
-        items.append(.user(id: UUID(), text: text))
-        apiMessages.append(["role": "user", "content": text])
+        for attachment in attachments {
+            items.append(.attachment(id: UUID(), label: attachment.filename))
+        }
+        items.append(.user(id: UUID(), text: text.isEmpty ? "(attachment)" : text))
+        if attachments.isEmpty {
+            apiMessages.append(["role": "user", "content": text])
+        } else {
+            var blocks: [[String: Any]] = attachments.map { $0.contentBlock() }
+            blocks.append(["type": "text", "text": text.isEmpty ? "See the attachment." : text])
+            apiMessages.append(["role": "user", "content": blocks])
+        }
         persistCurrent()
 
         let client = ClaudeClient(apiKey: apiKey)
