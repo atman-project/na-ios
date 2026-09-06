@@ -155,6 +155,7 @@ struct ChatView: View {
         case .assistant(let id, let text):
             VStack(alignment: .leading, spacing: 14) {
                 Text(Self.inlineMarkdown(text))
+                    .lineSpacing(6)
                     .textSelection(.enabled)
                 HStack(spacing: 14) {
                     Button {
