@@ -11,6 +11,7 @@ struct ChatView: View {
     @State private var renameTarget: Chat?
     @State private var copiedID: UUID?
     @State private var isAtBottom = true
+    @State private var toolDetail: ToolDetail?
     @State private var pendingAttachments: [Attachment] = []
     @State private var showPhotoPicker = false
     @State private var showFileImporter = false
@@ -48,6 +49,9 @@ struct ChatView: View {
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()
+        }
+        .sheet(item: $toolDetail) { detail in
+            ToolDetailSheet(detail: detail)
         }
         .fullScreenCover(isPresented: $showCamera) {
             CameraPicker { image in
@@ -245,14 +249,19 @@ struct ChatView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, 2)
-        case .tool(_, let name, let summary, let isError):
-            HStack(spacing: 6) {
-                Image(systemName: isError ? "exclamationmark.triangle" : "wrench.and.screwdriver")
-                Text(name).fontWeight(.medium)
-                if !summary.isEmpty {
-                    Text(summary).lineLimit(1).foregroundStyle(.secondary)
+        case .tool(_, let name, let summary, let detail, let isError):
+            Button {
+                toolDetail = ToolDetail(name: name, text: detail)
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: isError ? "exclamationmark.triangle" : "wrench.and.screwdriver")
+                    Text(name).fontWeight(.medium)
+                    if !summary.isEmpty {
+                        Text(summary).lineLimit(1).foregroundStyle(.secondary)
+                    }
                 }
             }
+            .buttonStyle(.plain)
             .font(.caption)
             .foregroundStyle(isError ? .red : .secondary)
             .padding(.leading, 4)
@@ -564,5 +573,42 @@ private enum MessageMarkdown {
             result.append(NSAttributedString(string: piece, attributes: attributes))
         }
         return result
+    }
+}
+
+private struct ToolDetail: Identifiable {
+    let id = UUID()
+    let name: String
+    let text: String
+}
+
+/// Full input of a tool call (the SQL, the records, …), selectable.
+private struct ToolDetailSheet: View {
+    let detail: ToolDetail
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                Text(detail.text.isEmpty ? "(no input)" : detail.text)
+                    .font(.system(.footnote, design: .monospaced))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+            }
+            .navigationTitle(detail.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Copy", systemImage: "doc.on.doc") {
+                        UIPasteboard.general.string = detail.text
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 }
