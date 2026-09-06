@@ -8,16 +8,15 @@ struct ChatView: View {
     @State private var showSidebar = false
     @State private var renameTarget: Chat?
     @State private var copiedID: UUID?
+    @State private var isAtBottom = true
     @State private var renameText = ""
     @FocusState private var inputFocused: Bool
 
     var body: some View {
         ZStack(alignment: .leading) {
             NavigationStack {
-                VStack(spacing: 0) {
-                    transcript
-                    inputBar
-                }
+                transcript
+                    .safeAreaInset(edge: .bottom, spacing: 0) { inputBar }
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
@@ -120,14 +119,36 @@ struct ChatView: View {
                     ForEach(model.items) { item in
                         row(for: item)
                     }
+                    // Sentinel: tracks whether the view is scrolled to the bottom.
+                    Color.clear
+                        .frame(height: 1)
+                        .id("bottom")
+                        .onAppear { isAtBottom = true }
+                        .onDisappear { isAtBottom = false }
                 }
                 .padding()
             }
             .scrollDismissesKeyboard(.immediately)
             .onTapGesture { inputFocused = false }
             .onChange(of: model.items.count) {
-                if let last = model.items.last?.id {
-                    withAnimation { proxy.scrollTo(last, anchor: .bottom) }
+                // Follow new messages only when already at the bottom.
+                if isAtBottom {
+                    withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
+                }
+            }
+            .overlay(alignment: .bottom) {
+                if !isAtBottom {
+                    Button {
+                        withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
+                    } label: {
+                        Image(systemName: "arrow.down")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(.primary)
+                            .padding(11)
+                            .background(.regularMaterial, in: Circle())
+                            .overlay(Circle().strokeBorder(.quaternary, lineWidth: 0.5))
+                    }
+                    .padding(.bottom, 10)
                 }
             }
         }
@@ -236,31 +257,65 @@ struct ChatView: View {
                 }
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 17)
+                .modifier(ComposerBackground())
                 .padding(.horizontal)
-                .padding(.vertical, 14)
+                .padding(.vertical, 8)
             } else {
-                HStack(spacing: 8) {
+                HStack(alignment: .bottom, spacing: 8) {
                     TextField("Tell Atman something…", text: $draft, axis: .vertical)
                         .lineLimit(1...4)
-                        .textFieldStyle(.roundedBorder)
                         .focused($inputFocused)
                         .onSubmit(submit)
+                        .padding(.vertical, 15)
                     Button(action: submit) {
                         Image(systemName: "arrow.up.circle.fill")
-                            .font(.title2)
+                            .font(.system(size: 32))
                     }
                     .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
+                    // Matches the single-line row height (22pt line + 2×15pt
+                    // padding), so bottom alignment reads as centered at one
+                    // line and bottom-pinned when the field grows.
+                    .frame(height: 52)
                 }
+                .padding(.leading, 18)
+                .padding(.trailing, 8)
+                .modifier(ComposerBackground())
                 .padding(.horizontal)
                 .padding(.vertical, 8)
             }
         }
-        .background(.bar)
     }
 
     private func submit() {
         let text = draft
         draft = ""
         model.send(text)
+    }
+}
+
+/// Liquid Glass on iOS 26+, plain fill on earlier systems.
+///
+/// The `#if compiler` guard keeps the file compilable on pre-Xcode-26
+/// toolchains (e.g. CI runners), where the `glassEffect` symbol does not
+/// exist in the SDK; `#available` alone only guards at runtime.
+private struct ComposerBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular, in: RoundedRectangle(cornerRadius: 26))
+        } else {
+            fallback(content: content)
+        }
+        #else
+        fallback(content)
+        #endif
+    }
+
+    private func fallback(content: Content) -> some View {
+        content.background(
+            Color(.secondarySystemBackground),
+            in: RoundedRectangle(cornerRadius: 26))
     }
 }
