@@ -1,4 +1,4 @@
-# Atman Agent
+# Na
 
 An app that integrates all the components in the Atman tech stack.
 For now, the app is over a user-owned local SQLite database: the user talks
@@ -47,4 +47,4 @@ xcodegen generate                  # .xcodeproj is generated, never committed
 
 The Rust lib slice must match the Xcode destination (same workflow as
 beam-ios's build_atman.sh). Verify builds with:
-`xcodebuild -project AtmanAgent.xcodeproj -scheme AtmanAgent -destination 'generic/platform=iOS Simulator' ARCHS=arm64 CODE_SIGNING_ALLOWED=NO build`
+`xcodebuild -project Na.xcodeproj -scheme Na -destination 'generic/platform=iOS Simulator' ARCHS=arm64 CODE_SIGNING_ALLOWED=NO build`

@@ -1,6 +1,6 @@
-# Atman Agent
+# Na
 
-The core [Atman Project](https://github.com/atman-project) application.
+**Na** (나, "I") — the core [Atman Project](https://github.com/atman-project) application.
 
 Current status: a SQLite database that lives on your phone, mutated and queried by chatting.
 
@@ -32,14 +32,14 @@ Requires Rust (with `aarch64-apple-ios*` targets) and
 git submodule update --init
 ./build_crrdb_mcp.sh --sim-arm64   # or --arm64 for a real device
 xcodegen generate
-open AtmanAgent.xcodeproj
+open Na.xcodeproj
 ```
 
 Set your Anthropic API key in the app's Settings (stored in the Keychain).
 
 ## App icon
 
-The icon glyph — "나" — is set in [Pretendard](https://github.com/orioncactus/pretendard) Black v1.3.9 (SIL Open Font License, © Kil Hyung-jin), rendered once into `AtmanAgent/Assets.xcassets/AppIcon.appiconset/app_icon.png`.
+The icon glyph — "나" — is set in [Pretendard](https://github.com/orioncactus/pretendard) Black v1.3.9 (SIL Open Font License, © Kil Hyung-jin), rendered once into `Na/Assets.xcassets/AppIcon.appiconset/app_icon.png`.
 No font files ship in the app, and the OFL makes the artwork reusable anywhere.
 
 ## Not yet
