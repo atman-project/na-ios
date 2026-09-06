@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ChatView: View {
     @StateObject private var model = ChatViewModel()
@@ -6,6 +7,7 @@ struct ChatView: View {
     @State private var showSettings = false
     @State private var showSidebar = false
     @State private var renameTarget: Chat?
+    @State private var copiedID: UUID?
     @State private var renameText = ""
     @FocusState private var inputFocused: Bool
 
@@ -145,11 +147,31 @@ struct ChatView: View {
                     .padding(10)
                     .background(Color.accentColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 14))
             }
-        case .assistant(_, let text):
-            Text(Self.inlineMarkdown(text))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 2)
-                .textSelection(.enabled)
+        case .assistant(let id, let text):
+            VStack(alignment: .leading, spacing: 14) {
+                Text(Self.inlineMarkdown(text))
+                    .textSelection(.enabled)
+                HStack(spacing: 14) {
+                    Button {
+                        UIPasteboard.general.string = text
+                        copiedID = id
+                        Task {
+                            try? await Task.sleep(for: .seconds(1.5))
+                            if copiedID == id { copiedID = nil }
+                        }
+                    } label: {
+                        Image(systemName: copiedID == id ? "checkmark" : "doc.on.doc")
+                    }
+                    ShareLink(item: text) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                }
+                .font(.system(size: 15))
+                .foregroundStyle(.secondary)
+                .buttonStyle(.plain)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 2)
         case .tool(_, let name, let summary, let isError):
             HStack(spacing: 6) {
                 Image(systemName: isError ? "exclamationmark.triangle" : "wrench.and.screwdriver")
