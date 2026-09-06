@@ -55,14 +55,15 @@ final class ChatViewModel: ObservableObject {
     enum Item: Identifiable, Codable {
         case user(id: UUID, text: String)
         case assistant(id: UUID, text: String)
-        case tool(id: UUID, name: String, summary: String, isError: Bool)
+        // `detail` is optional so chats persisted before it existed still decode.
+        case tool(id: UUID, name: String, summary: String, detail: String?, isError: Bool)
         case attachment(id: UUID, label: String)
         case error(id: UUID, text: String)
 
         var id: UUID {
             switch self {
             case .user(let id, _), .assistant(let id, _),
-                 .tool(let id, _, _, _), .attachment(let id, _),
+                 .tool(let id, _, _, _, _), .attachment(let id, _),
                  .error(let id, _):
                 return id
             }
@@ -216,6 +217,7 @@ final class ChatViewModel: ObservableObject {
                         items.append(.tool(
                             id: UUID(), name: name,
                             summary: Self.summary(name: name, input: input),
+                            detail: Self.detailText(input: input),
                             isError: isError))
                         var result: [String: Any] = [
                             "type": "tool_result",
@@ -259,6 +261,23 @@ final class ChatViewModel: ObservableObject {
         } catch {
             return ("{\"error\": {\"kind\": \"ffi\", \"message\": \"\(error)\"}}", true)
         }
+    }
+
+    /// Full tool input for the detail sheet: SQL shown plainly when present,
+    /// everything else as pretty-printed JSON.
+    private static func detailText(input: [String: Any]) -> String {
+        var parts: [String] = []
+        if let sql = input["sql"] as? String {
+            parts.append(sql)
+        }
+        let rest = input.filter { $0.key != "sql" }
+        if !rest.isEmpty,
+           let data = try? JSONSerialization.data(
+               withJSONObject: rest, options: [.prettyPrinted, .sortedKeys]),
+           let json = String(data: data, encoding: .utf8) {
+            parts.append(json)
+        }
+        return parts.joined(separator: "\n\n")
     }
 
     private static func summary(name: String, input: [String: Any]) -> String {
