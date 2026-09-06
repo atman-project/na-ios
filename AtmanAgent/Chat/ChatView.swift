@@ -18,7 +18,7 @@ struct ChatView: View {
                     transcript
                     inputBar
                 }
-                .navigationTitle("Atman")
+                .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
                         Button("Chats", systemImage: "line.3.horizontal") {
@@ -62,6 +62,11 @@ struct ChatView: View {
 
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
+            Text("Atman")
+                .font(.largeTitle.bold())
+                .padding(.horizontal)
+                .padding(.top, 12)
+
             Button {
                 model.newChat()
                 withAnimation { showSidebar = false }
