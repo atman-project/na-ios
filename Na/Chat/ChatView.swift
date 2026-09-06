@@ -167,6 +167,13 @@ struct ChatView: View {
                     withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
                 }
             }
+            // Open at the latest message — on launch and when switching chats.
+            .onAppear {
+                DispatchQueue.main.async { proxy.scrollTo("bottom", anchor: .bottom) }
+            }
+            .onChange(of: model.currentChatID) {
+                DispatchQueue.main.async { proxy.scrollTo("bottom", anchor: .bottom) }
+            }
             .overlay(alignment: .bottom) {
                 if !isAtBottom {
                     Button {
