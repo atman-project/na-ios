@@ -6,7 +6,7 @@ import MLXLLM
 import MLXLMCommon
 import Tokenizers
 
-/// On-device Qwen3.5-2B via MLX. Downloads from Hugging Face on first load and
+/// On-device Qwen3.5-4B via MLX. Downloads from Hugging Face on first load and
 /// keeps one ChatSession per chat (KV cache reuse across turns). The tool
 /// loop runs inside the library: it parses the model's tool calls and invokes
 /// our `toolDispatch`, which executes against the embedded crrdb-mcp.
@@ -14,7 +14,7 @@ import Tokenizers
 final class LocalLLM: ObservableObject {
     static let shared = LocalLLM()
 
-    static let modelID = "mlx-community/Qwen3.5-2B-4bit"
+    static let modelID = "mlx-community/Qwen3.5-4B-MLX-4bit"
 
     enum State: Equatable {
         case idle
@@ -113,7 +113,7 @@ final class LocalLLM: ObservableObject {
         parameters.temperature = 0.2
         let session = ChatSession(
             container,
-            instructions: AtmanTools.localSystemPrompt,
+            instructions: AtmanTools.systemPrompt,
             generateParameters: parameters,
             tools: AtmanTools.toolSpecs,
             toolDispatch: toolDispatch)

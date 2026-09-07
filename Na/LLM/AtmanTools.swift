@@ -35,31 +35,6 @@ enum AtmanTools {
         when it stays narrow (3 columns or fewer, short cells).
         """
 
-    /// Extra guardrails for the small on-device model (lessons from the
-    /// Qwen3-4B spike: it stalls into ask-permission mode and forgets SQL
-    /// conventions without explicit rules).
-    static var localSystemPrompt: String {
-        systemPrompt + """
-
-
-        IMPORTANT rules:
-        - Act immediately using tools. Never ask for permission or confirmation; \
-        do it and report the result in one short sentence.
-        - create_table SQL MUST end with `) STRICT`, MUST include `_raw TEXT NOT NULL` \
-        and `_said_at TEXT NOT NULL`, and MUST have a PRIMARY KEY \
-        (use `id TEXT PRIMARY KEY` holding a 26-char ULID if unsure).
-        - Only commit records when the user's message contains actual data. A message \
-        that merely asks to start tracking creates the table only.
-        - NEVER invent records. Values appearing in these instructions (dates, \
-        litres, stations, "Morning run") are formatting samples, not data — \
-        committing them corrupts the user's database.
-        - Use only table names that get_schema returned. Never guess or shorten \
-        a table name.
-        - When a tool returns an error, fix the input per the hint and call the tool \
-        again immediately. Never describe the fix in text instead of doing it.
-        """
-    }
-
     /// OpenAI-style tool specs for the local model (MLX ChatSession format).
     static var toolSpecs: [[String: any Sendable]] {
         definitions.map { def in
