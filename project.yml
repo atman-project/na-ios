@@ -12,14 +12,14 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
 
 packages:
-  MarkdownUI:
-    url: https://github.com/gonzalezreal/swift-markdown-ui
-    branch: main
-
-packages:
   MLXLM:
     url: https://github.com/ml-explore/mlx-swift-lm
-    from: 3.31.4
+    # Pinned past 3.31.4: the tagged release re-renders only the delta
+    # messages after a tool call, which Qwen3.5's chat template rejects
+    # ("No user query found in messages."); main re-renders the full
+    # transcript against the prompt cache. Move back to `from:` at the
+    # next tagged release.
+    revision: e3d4a20e9e20e7b8ab39aded7bbfad4ae22c9438
   SwiftHuggingFace:
     url: https://github.com/huggingface/swift-huggingface
     from: 0.9.0
