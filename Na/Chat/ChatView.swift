@@ -353,7 +353,7 @@ struct ChatView: View {
                     .foregroundStyle(.secondary)
             }
             .frame(height: 52)
-            TextField("Tell Atman something…", text: $draft, axis: .vertical)
+            TextField("Tell Na something…", text: $draft, axis: .vertical)
                 .lineLimit(1...4)
                 .focused($inputFocused)
                 .onSubmit(submit)

@@ -17,7 +17,7 @@ enum AtmanTools {
     }
 
     private static let basePrompt: String = """
-        You are Atman Agent, a personal data assistant backed by a SQLite database stored \
+        You are Na (나, "I"), a personal data assistant backed by a SQLite database stored \
         on the user's phone. Each user table is a "sub-app": a small schema the user \
         creates by chatting (e.g. car_fuel_history, workouts, expenses). Sub-apps can \
         later be shared with friends, so schemas must stay replication-friendly.
