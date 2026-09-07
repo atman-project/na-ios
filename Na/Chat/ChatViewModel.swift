@@ -207,7 +207,12 @@ final class ChatViewModel: ObservableObject {
         do {
             let reply = try await session.respond(to: text)
             guard currentChatID == chatID else { return }
-            let trimmedReply = reply.trimmingCharacters(in: .whitespacesAndNewlines)
+            // Qwen3.5's thinking leaks into the reply because mlx-swift-lm
+            // expects <think>/</think> to be special tokens and the checkpoint
+            // tokenizes them as plain text. The final answer is everything
+            // after the last closing tag.
+            let visible = reply.components(separatedBy: "</think>").last ?? reply
+            let trimmedReply = visible.trimmingCharacters(in: .whitespacesAndNewlines)
             items.append(.assistant(id: UUID(), text: trimmedReply.isEmpty ? "(no response)" : trimmedReply))
         } catch is CancellationError {
             if currentChatID == chatID { items.append(.error(id: UUID(), text: "Stopped.")) }
