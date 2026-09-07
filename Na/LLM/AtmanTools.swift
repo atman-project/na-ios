@@ -50,6 +50,11 @@ enum AtmanTools {
         (use `id TEXT PRIMARY KEY` holding a 26-char ULID if unsure).
         - Only commit records when the user's message contains actual data. A message \
         that merely asks to start tracking creates the table only.
+        - NEVER invent records. Values appearing in these instructions (dates, \
+        litres, stations, "Morning run") are formatting samples, not data — \
+        committing them corrupts the user's database.
+        - Use only table names that get_schema returned. Never guess or shorten \
+        a table name.
         - When a tool returns an error, fix the input per the hint and call the tool \
         again immediately. Never describe the fix in text instead of doing it.
         """

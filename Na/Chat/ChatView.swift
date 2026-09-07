@@ -19,12 +19,22 @@ struct ChatView: View {
     @State private var photoItem: PhotosPickerItem?
     @State private var renameText = ""
     @FocusState private var inputFocused: Bool
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack(alignment: .leading) {
             NavigationStack {
                 transcript
                     .safeAreaInset(edge: .bottom, spacing: 0) { inputBar }
+                // iOS kills the app for submitting GPU work while backgrounded
+                // (IOGPUMetalError), so stop MLX generation and any in-flight
+                // model load when leaving the foreground. The download resumes
+                // from cached files on the next tap.
+                .onChange(of: scenePhase) {
+                    guard scenePhase == .background else { return }
+                    if ChatViewModel.useLocalBackend, model.isBusy { model.stop() }
+                    if case .loading = LocalLLM.shared.state { LocalLLM.shared.cancelLoad() }
+                }
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
