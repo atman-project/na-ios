@@ -28,12 +28,12 @@ Sharing/joining sub-apps and live replication arrive when [crrdb](https://github
 Two interchangeable brains, switched in Settings:
 
 - **Claude API** (`claude-opus-5`) — the default; needs an Anthropic API key.
-- **On-device Qwen3-4B** ([mlx-community/Qwen3-4B-Instruct-2507-4bit](https://huggingface.co/mlx-community/Qwen3-4B-Instruct-2507-4bit))
+- **On-device Qwen3.5-2B** ([mlx-community/Qwen3.5-2B-4bit](https://huggingface.co/mlx-community/Qwen3.5-2B-4bit))
   via [MLX Swift](https://github.com/ml-explore/mlx-swift-lm). Fully local: the
   tool loop, chat template, and tool-call parsing run in `mlx-swift-lm`'s
   `ChatSession`, dispatching into the same embedded crrdb-mcp. First use
-  downloads ~2.3 GB from Hugging Face. Requires an 8GB-RAM iPhone
-  (15 Pro / 16 or newer); the iOS Simulator cannot run MLX — use a real device.
+  downloads ~1.2 GB from Hugging Face. Needs a recent iPhone with 6GB RAM or
+  more; the iOS Simulator cannot run MLX — use a real device.
 
 ## Build
 

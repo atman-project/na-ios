@@ -12,7 +12,7 @@ struct SettingsView: View {
                 Section {
                     Picker("Model", selection: $backend) {
                         Text("Claude API").tag("claude")
-                        Text("On-device (Qwen3-4B)").tag("local")
+                        Text("On-device (Qwen3.5-2B)").tag("local")
                     }
                     // Switching backends mid-download would strand the download;
                     // cancel it first.
@@ -24,7 +24,7 @@ struct SettingsView: View {
                     Text("Backend")
                 } footer: {
                     if backend == "local" {
-                        Text("Runs entirely on this device via MLX. Needs an 8GB-RAM iPhone (15 Pro / 16 or newer); the iOS Simulator is not supported. First use downloads ~2.3 GB (Wi-Fi recommended).")
+                        Text("Runs entirely on this device via MLX. Needs a recent iPhone (6GB RAM or more); the iOS Simulator is not supported. First use downloads ~1.2 GB (Wi-Fi recommended).")
                     }
                 }
 

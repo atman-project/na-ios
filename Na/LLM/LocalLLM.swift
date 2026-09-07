@@ -1,11 +1,12 @@
 import Foundation
 import HuggingFace
+import MLX
 import MLXHuggingFace
 import MLXLLM
 import MLXLMCommon
 import Tokenizers
 
-/// On-device Qwen3-4B via MLX. Downloads from Hugging Face on first load and
+/// On-device Qwen3.5-2B via MLX. Downloads from Hugging Face on first load and
 /// keeps one ChatSession per chat (KV cache reuse across turns). The tool
 /// loop runs inside the library: it parses the model's tool calls and invokes
 /// our `toolDispatch`, which executes against the embedded crrdb-mcp.
@@ -13,7 +14,7 @@ import Tokenizers
 final class LocalLLM: ObservableObject {
     static let shared = LocalLLM()
 
-    static let modelID = "mlx-community/Qwen3-4B-Instruct-2507-4bit"
+    static let modelID = "mlx-community/Qwen3.5-2B-4bit"
 
     enum State: Equatable {
         case idle
@@ -38,6 +39,10 @@ final class LocalLLM: ObservableObject {
             return
         }
         guard loadTask == nil else { return }
+        // Cap MLX's Metal buffer cache so freed evaluation buffers return to
+        // the OS instead of accumulating on top of the resident weights —
+        // jetsam kills us long before the device is actually out of memory.
+        MLX.Memory.cacheLimit = 20 * 1024 * 1024
         state = .loading(0)
         loadTask = Task {
             do {
