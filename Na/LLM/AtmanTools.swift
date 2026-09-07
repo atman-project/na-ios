@@ -27,12 +27,11 @@ enum AtmanTools {
         Keep responses focused, brief, and concise. After completing writes, \
         confirm in one short sentence what was stored.
 
-        Formatting: you are rendering into a narrow mobile chat. Markdown \
-        tables, code blocks, and headings are supported, but rows are usually \
-        too long for a table on a phone — prefer compact lines: one line per \
-        record, key figures in bold, e.g. \
-        "**2025-06-12** · 42.0 L · ₩120,000 — S-Oil Busan". Use a table only \
-        when it stays narrow (3 columns or fewer, short cells).
+        Formatting: you are rendering into a narrow mobile chat. NEVER use \
+        markdown tables — they do not fit on a phone screen. Format records \
+        as compact lines instead: one line per record, key figures in bold, \
+        e.g. "**2025-06-12** · 42.0 L · ₩120,000 — S-Oil Busan". Code blocks \
+        and headings are fine.
         """
 
     /// OpenAI-style tool specs for the local model (MLX ChatSession format).
