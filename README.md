@@ -23,6 +23,18 @@ Sharing/joining sub-apps and live replication arrive when [crrdb](https://github
 - When crrdb (conflict-free replication) lands inside crrdb-mcp, this app
   inherits it by bumping the submodule.
 
+## Backends
+
+Two interchangeable brains, switched in Settings:
+
+- **Claude API** (`claude-opus-5`) — the default; needs an Anthropic API key.
+- **On-device Qwen3.5-4B** ([mlx-community/Qwen3.5-4B-MLX-4bit](https://huggingface.co/mlx-community/Qwen3.5-4B-MLX-4bit))
+  via [MLX Swift](https://github.com/ml-explore/mlx-swift-lm). Fully local: the
+  tool loop, chat template, and tool-call parsing run in `mlx-swift-lm`'s
+  `ChatSession`, dispatching into the same embedded crrdb-mcp. First use
+  downloads ~2.3 GB from Hugging Face. Requires an 8GB-RAM iPhone
+  (15 Pro / 16 or newer); the iOS Simulator cannot run MLX — use a real device.
+
 ## Build
 
 Requires Rust (with `aarch64-apple-ios*` targets) and
@@ -30,10 +42,15 @@ Requires Rust (with `aarch64-apple-ios*` targets) and
 
 ```bash
 git submodule update --init
-./build_crrdb_mcp.sh --sim-arm64   # or --arm64 for a real device
+./build_crrdb_mcp.sh --sim-arm64 --release  # or --arm64 for a real device
 xcodegen generate
 open Na.xcodeproj
 ```
+
+First build notes: Xcode will ask to **Trust & Enable** the mlx-swift build
+plugin and macros — accept. CLI builds pass `-skipPackagePluginValidation
+-skipMacroValidation` instead. Xcode 26+ also needs the Metal toolchain
+component (`xcodebuild -downloadComponent MetalToolchain`).
 
 Set your Anthropic API key in the app's Settings (stored in the Keychain).
 

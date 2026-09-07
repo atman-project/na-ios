@@ -18,9 +18,17 @@ never in the model.
   crrdb-mcp repo. A Swift replica was built once and deliberately deleted.
 - No stdio, no MCP transport on device: Swift calls the same rmcp `Server`
   methods in-process through UniFFI-generated bindings.
-- Chat drives the Anthropic Messages API (`claude-opus-5`) with a manual
-  tool-use loop in `ChatViewModel` (max 25 iterations). Content blocks are
-  round-tripped verbatim so thinking blocks survive.
+- Chat drives one of two switchable backends (`llm.backend` in UserDefaults):
+  the Anthropic Messages API (`claude-opus-5`) with a manual tool-use loop in
+  `ChatViewModel` (max 25 iterations; content blocks round-tripped verbatim so
+  thinking blocks survive), or on-device Qwen3.5-4B via MLX (`LocalLLM` +
+  `mlx-swift-lm` `ChatSession`, which owns the local conversation state and
+  runs the tool loop internally through a `toolDispatch` closure into
+  crrdb-mcp). The local backend needs a real device with 8GB RAM (iPhone 15 Pro / 16 or newer); the
+  simulator path shows an explanatory error. Both backends share the same
+  system prompt (`AtmanTools.systemPrompt`); a separate hardened local prompt
+  existed for Qwen3-4B but was deleted with the move to Qwen3.5 — re-add
+  specific rules only when a real failure shows the need.
 - The database is `Documents/atman.sqlite` (visible in the Files app).
   When crrdb replication lands inside crrdb-mcp, this app inherits it by
   bumping the submodule — `Crrdb` in Swift is the only seam.
@@ -47,4 +55,6 @@ xcodegen generate                  # .xcodeproj is generated, never committed
 
 The Rust lib slice must match the Xcode destination (same workflow as
 beam-ios's build_atman.sh). Verify builds with:
-`xcodebuild -project Na.xcodeproj -scheme Na -destination 'generic/platform=iOS Simulator' ARCHS=arm64 CODE_SIGNING_ALLOWED=NO build`
+`xcodebuild -project Na.xcodeproj -scheme Na -destination 'generic/platform=iOS Simulator' ARCHS=arm64 CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation -skipMacroValidation build`
+(the skip flags are required by mlx-swift's build plugin and macros; Xcode 26+
+also needs `xcodebuild -downloadComponent MetalToolchain` once).

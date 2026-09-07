@@ -42,11 +42,18 @@ jobs:
           DEVELOPMENT_TEAM: ${{ secrets.APPLE_DEVELOPMENT_TEAM }}
         run: xcodegen
 
+      # mlx-swift compiles Metal shaders; on Xcode 26+ the Metal compiler is a
+      # separate component.
+      - name: Ensure Metal toolchain
+        run: xcrun -f metal >/dev/null 2>&1 || sudo xcodebuild -downloadComponent MetalToolchain
+
       - name: Build the app for the iOS simulator
         run: |
           xcodebuild build \
             -scheme Na \
             -project Na.xcodeproj \
             -destination 'generic/platform=iOS Simulator' \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
             ARCHS=arm64 \
             CODE_SIGNING_ALLOWED=NO
